@@ -1,0 +1,9 @@
+{
+    "EmailDestino": "",
+    "Smtp": {
+        "Host": "",
+        "Port": 587,
+        "Username": "",
+        "Password": ""
+    }
+}
