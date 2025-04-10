@@ -15,14 +15,28 @@ public class EmailService
         var subject = $"ALERT: {alertType} for {stockSymbol}";
         var body = $"Current price: R$ {currentPrice:0.00} - {(alertType == "SELL" ? "above" : "below")} threshold R$ {threshold:0.00}";
 
-        using var smtpClient = new SmtpClient(_config.Smtp.Host, _config.Smtp.Port)
+        try
         {
-            Credentials = new NetworkCredential(_config.Smtp.Username, _config.Smtp.Password),
-            EnableSsl = true
-        };
+            using var smtpClient = new SmtpClient(_config.Smtp.Host, _config.Smtp.Port)
+            {
+                Credentials = new NetworkCredential(_config.Smtp.Username, _config.Smtp.Password),
+                EnableSsl = true
+            };
 
-        var mailMessage = new MailMessage(_config.Smtp.Username, _config.EmailDestination, subject, body);
-        await smtpClient.SendMailAsync(mailMessage);
+            var mailMessage = new MailMessage(_config.Smtp.Username, _config.EmailDestination, subject, body);
+            await smtpClient.SendMailAsync(mailMessage);
+        }
+        catch (SmtpException ex)
+        {
+            Console.WriteLine($"SMTP error: {ex.Message}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            Console.WriteLine($"Email sending failed: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Unexpected email error: {ex.Message}");
+        }
     }
 }
-
