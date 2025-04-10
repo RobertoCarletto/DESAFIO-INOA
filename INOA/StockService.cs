@@ -3,15 +3,15 @@ using System.Text.Json;
 
 public class StockService
 {
-    private static readonly HttpClient _http = new HttpClient();
+    private static readonly HttpClient httpClient = new HttpClient();
 
-    public async Task<double> ObterPrecoAtualAsync(string ativo)
+    public async Task<double> GetCurrentPriceAsync(string stockSymbol)
     {
-        string url = $"https://brapi.dev/api/quote/{ativo}?range=1d&interval=1m";
-        var response = await _http.GetStringAsync(url);
-        using var doc = JsonDocument.Parse(response);
+        string apiUrl = $"https://brapi.dev/api/quote/{stockSymbol}?range=1d&interval=1m";
+        var jsonResponse = await httpClient.GetStringAsync(apiUrl);
+        using var jsonDoc = JsonDocument.Parse(jsonResponse);
 
-        var result = doc.RootElement.GetProperty("results")[0];
-        return result.GetProperty("regularMarketPrice").GetDouble();
+        var stockData = jsonDoc.RootElement.GetProperty("results")[0];
+        return stockData.GetProperty("regularMarketPrice").GetDouble();
     }
 }

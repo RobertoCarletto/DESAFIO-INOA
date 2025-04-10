@@ -1,5 +1,4 @@
 ﻿using System.Text.Json;
-using INOA;
 
 class Program
 {
@@ -7,45 +6,45 @@ class Program
     {
         if (args.Length != 3)
         {
-            Console.WriteLine("Formato inválido!\nUso: stock-quote-alert.exe ATIVO LIMITE_VENDA LIMITE_COMPRA");
+            Console.WriteLine("Usage: stock-quote-alert.exe STOCK_SYMBOL SELL_THRESHOLD BUY_THRESHOLD");
             return;
         }
 
-        string ativo = args[0];
-        double limiteVenda = double.Parse(args[1]);
-        double limiteCompra = double.Parse(args[2]);
+        string stockSymbol = args[0];
+        double sellThreshold = double.Parse(args[1]);
+        double buyThreshold = double.Parse(args[2]);
 
-        var configText = await File.ReadAllTextAsync("config.json");
-        var config = JsonSerializer.Deserialize<Config>(configText);
+        var configJson = await File.ReadAllTextAsync("config.json");
+        var config = JsonSerializer.Deserialize<Config>(configJson);
         var emailService = new EmailService(config);
         var stockService = new StockService();
 
-        bool alertadoCompra = false;
-        bool alertadoVenda = false;
+        bool hasSentBuyAlert = false;
+        bool hasSentSellAlert = false;
 
         while (true)
         {
             try
             {
-                double precoAtual = await stockService.ObterPrecoAtualAsync(ativo);
-                Console.WriteLine($"{DateTime.Now:T} | {ativo}: R$ {precoAtual}");
+                double currentPrice = await stockService.GetCurrentPriceAsync(stockSymbol);
+                Console.WriteLine($"{DateTime.Now:T} | {stockSymbol}: R$ {currentPrice}");
 
-                if (precoAtual > limiteVenda && !alertadoVenda)
+                if (currentPrice > sellThreshold && !hasSentSellAlert)
                 {
-                    await emailService.EnviarAlertaAsync("VENDA", ativo, precoAtual, limiteVenda);
-                    alertadoVenda = true;
-                    alertadoCompra = false;
+                    await emailService.SendAlertAsync("SELL", stockSymbol, currentPrice, sellThreshold);
+                    hasSentSellAlert = true;
+                    hasSentBuyAlert = false;
                 }
-                else if (precoAtual < limiteCompra && !alertadoCompra)
+                else if (currentPrice < buyThreshold && !hasSentBuyAlert)
                 {
-                    await emailService.EnviarAlertaAsync("COMPRA", ativo, precoAtual, limiteCompra);
-                    alertadoCompra = true;
-                    alertadoVenda = false;
+                    await emailService.SendAlertAsync("BUY", stockSymbol, currentPrice, buyThreshold);
+                    hasSentBuyAlert = true;
+                    hasSentSellAlert = false;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Erro: {ex.Message}");
+                Console.WriteLine($"Error: {ex.Message}");
             }
 
             await Task.Delay(TimeSpan.FromMinutes(1));
