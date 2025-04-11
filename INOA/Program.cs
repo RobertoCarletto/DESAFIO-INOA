@@ -9,8 +9,81 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        Config config;
         string configPath = "config.json";
+        string assetsPath = "assets.args";
+
+        if (args.Length == 1)
+        {
+            switch (args[0])
+            {
+                case "--help":
+                    Console.WriteLine("Available commands:");
+                    Console.WriteLine("  --edit-email     Edit alert destination email");
+                    Console.WriteLine("  --edit-assets    Edit monitored stocks and thresholds");
+                    Console.WriteLine("  --reset-config   Delete config.json and assets.args to reconfigure everything");
+                    return;
+
+                case "--edit-email":
+                    if (!File.Exists(configPath))
+                    {
+                        Console.WriteLine("Configuration file not found.");
+                        return;
+                    }
+                    var configJson = await File.ReadAllTextAsync(configPath);
+                    var configEmail = JsonSerializer.Deserialize<Config>(configJson);
+
+                    if (configEmail == null || configEmail.Smtp == null)
+                    {
+                        Console.WriteLine("Invalid configuration file.");
+                        return;
+                    }
+
+                    string newEmail;
+                    do
+                    {
+                        Console.Write("Enter new email: ");
+                        newEmail = Console.ReadLine()?.Trim() ?? "";
+                    } while (!IsValidEmail(newEmail));
+
+                    using (var doc = JsonDocument.Parse(configJson))
+                    using (var stream = File.Create(configPath))
+                    using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
+                    {
+                        writer.WriteStartObject();
+                        foreach (var property in doc.RootElement.EnumerateObject())
+                        {
+                            if (property.NameEquals("EmailDestination"))
+                                writer.WriteString("EmailDestination", newEmail);
+                            else
+                                property.WriteTo(writer);
+                        }
+                        writer.WriteEndObject();
+                    }
+                    Console.WriteLine("Email updated successfully.");
+                    return;
+
+                case "--edit-assets":
+                    Console.WriteLine("Enter new stock alert data (SYMBOL SELL_THRESHOLD BUY_THRESHOLD ...):");
+                    Console.Write("> ");
+                    var newAssets = Console.ReadLine() ?? "";
+                    File.WriteAllText(assetsPath, newAssets);
+                    Console.WriteLine("Assets updated successfully.");
+                    return;
+
+                case "--reset-config":
+                    if (File.Exists(configPath)) File.Delete(configPath);
+                    if (File.Exists(assetsPath)) File.Delete(assetsPath);
+                    Console.WriteLine("Configuration reset. Restart the program to reconfigure.");
+                    return;
+
+                default:
+                    Console.WriteLine("Unknown command. Use --help to see available options.");
+                    return;
+            }
+        }
+
+
+        Config config;
 
         if (!File.Exists(configPath))
         {
@@ -18,8 +91,8 @@ class Program
             return;
         }
 
-        var configJson = await File.ReadAllTextAsync(configPath);
-        config = JsonSerializer.Deserialize<Config>(configJson);
+        var rawConfig = await File.ReadAllTextAsync(configPath);
+        config = JsonSerializer.Deserialize<Config>(rawConfig);
 
         if (config == null || config.Smtp == null)
         {
@@ -36,12 +109,11 @@ class Program
                 emailInput = Console.ReadLine()?.Trim() ?? "";
             } while (!IsValidEmail(emailInput));
 
-            using var jsonDoc = JsonDocument.Parse(configJson);
+            using var jsonDoc = JsonDocument.Parse(rawConfig);
             using var stream = File.Create(configPath);
             using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
 
             writer.WriteStartObject();
-
             foreach (var property in jsonDoc.RootElement.EnumerateObject())
             {
                 if (property.NameEquals("EmailDestination"))
@@ -54,7 +126,6 @@ class Program
                     property.WriteTo(writer);
                 }
             }
-
             writer.WriteEndObject();
             await writer.FlushAsync();
         }
@@ -68,16 +139,16 @@ class Program
         {
             assetArgs = args;
         }
-        else if (File.Exists("assets.args"))
+        else if (File.Exists(assetsPath))
         {
-            var raw = File.ReadAllText("assets.args").Trim();
+            var raw = File.ReadAllText(assetsPath).Trim();
             if (string.IsNullOrWhiteSpace(raw))
             {
                 Console.WriteLine("No stock data found in 'assets.args'. Please enter stocks in the format:");
                 Console.WriteLine("SYMBOL SELL_THRESHOLD BUY_THRESHOLD (multiple sets separated by spaces)");
                 Console.Write("Example: PETR4 22.67 22.59 VALE3 65.50 60.00\n> ");
                 raw = Console.ReadLine() ?? "";
-                File.WriteAllText("assets.args", raw);
+                File.WriteAllText(assetsPath, raw);
             }
             assetArgs = raw.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         }
@@ -87,7 +158,7 @@ class Program
             Console.WriteLine("SYMBOL SELL_THRESHOLD BUY_THRESHOLD (multiple sets separated by spaces)");
             Console.Write("Example: PETR4 22.67 22.59 VALE3 65.50 60.00\n> ");
             var input = Console.ReadLine() ?? "";
-            File.WriteAllText("assets.args", input);
+            File.WriteAllText(assetsPath, input);
             assetArgs = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         }
 
