@@ -19,7 +19,7 @@
         _emailService = emailService;
     }
 
-    public async Task RunAsync()
+    public async Task RunAsync(int intervalSeconds)
     {
         while (true)
         {
@@ -53,7 +53,7 @@
                 Console.WriteLine($"Unexpected runtime error: {ex.Message}");
             }
 
-            await Task.Delay(TimeSpan.FromMinutes(1));
+            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
         }
     }
 }

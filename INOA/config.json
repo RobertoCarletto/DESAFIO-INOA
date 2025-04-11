@@ -1,5 +1,6 @@
 {
     "EmailDestination": "",
+    "CheckIntervalSeconds": 60,
     "Smtp": {
         "Host": "",
         "Port": 587,

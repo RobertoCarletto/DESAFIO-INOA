@@ -1,6 +1,7 @@
 ﻿public class Config
 {
     public string EmailDestination { get; set; }
+    public int CheckIntervalSeconds { get; set; }
     public SmtpConfig Smtp { get; set; }
 }
 
