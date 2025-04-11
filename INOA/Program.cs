@@ -59,6 +59,7 @@ class Program
                         }
                         writer.WriteEndObject();
                     }
+                    Log($"Email destination updated to {newEmail}");
                     Console.WriteLine("Email updated successfully.");
                     return;
 
@@ -67,12 +68,14 @@ class Program
                     Console.Write("> ");
                     var newAssets = Console.ReadLine() ?? "";
                     File.WriteAllText(assetsPath, newAssets);
+                    Log("Stock asset list updated manually via --edit-assets");
                     Console.WriteLine("Assets updated successfully.");
                     return;
 
                 case "--reset-config":
                     if (File.Exists(configPath)) File.Delete(configPath);
                     if (File.Exists(assetsPath)) File.Delete(assetsPath);
+                    Log("Configuration reset via --reset-config");
                     Console.WriteLine("Configuration reset. Restart the program to reconfigure.");
                     return;
 
@@ -81,7 +84,6 @@ class Program
                     return;
             }
         }
-
 
         Config config;
 
@@ -128,6 +130,7 @@ class Program
             }
             writer.WriteEndObject();
             await writer.FlushAsync();
+            Log($"Email destination set to {emailInput}");
         }
 
         IEmailService emailService = new EmailService(config);
@@ -149,6 +152,7 @@ class Program
                 Console.Write("Example: PETR4 22.67 22.59 VALE3 65.50 60.00\n> ");
                 raw = Console.ReadLine() ?? "";
                 File.WriteAllText(assetsPath, raw);
+                Log("Stock asset list configured interactively (missing assets.args)");
             }
             assetArgs = raw.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         }
@@ -160,6 +164,7 @@ class Program
             var input = Console.ReadLine() ?? "";
             File.WriteAllText(assetsPath, input);
             assetArgs = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            Log("Stock asset list configured interactively (no assets.args found)");
         }
 
         var monitors = new List<StockAlertMonitor>();
@@ -171,24 +176,36 @@ class Program
                 !double.TryParse(assetArgs[i + 2], out double buyThreshold))
             {
                 Console.WriteLine($"Invalid thresholds for {stockSymbol}. Skipping...");
+                Log($"Invalid input for {stockSymbol}: {assetArgs[i + 1]} / {assetArgs[i + 2]}");
                 continue;
             }
 
             var monitor = new StockAlertMonitor(stockSymbol, sellThreshold, buyThreshold, stockService, emailService);
             monitors.Add(monitor);
+            Log($"Monitoring {stockSymbol}: SELL > {sellThreshold}, BUY < {buyThreshold}");
         }
 
         if (monitors.Count == 0)
         {
             Console.WriteLine("No valid stocks to monitor. Exiting.");
+            Log("No valid monitors initialized. Program exited.");
             return;
         }
 
+        Log($"Monitoring started for {monitors.Count} assets.");
         await Task.WhenAll(monitors.Select(m => m.RunAsync(config.CheckIntervalSeconds)));
     }
 
     static bool IsValidEmail(string email)
     {
         return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+    }
+
+    static void Log(string message)
+    {
+        var logLine = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} | {message}";
+        var logPath = Path.Combine("logs", "alerts.log");
+        Directory.CreateDirectory("logs");
+        File.AppendAllText(logPath, logLine + Environment.NewLine);
     }
 }
