@@ -53,45 +53,9 @@ class Program
             return;
         }
 
-        var emailService = new EmailService(config);
-        var stockService = new StockService();
-
-        bool hasSentBuyAlert = false;
-        bool hasSentSellAlert = false;
-
-        while (true)
-        {
-            try
-            {
-                double currentPrice = await stockService.GetCurrentPriceAsync(stockSymbol);
-                if (currentPrice < 0)
-                {
-                    Console.WriteLine("Skipping this iteration due to previous error.");
-                }
-                else
-                {
-                    Console.WriteLine($"{DateTime.Now:T} | {stockSymbol}: R$ {currentPrice}");
-
-                    if (currentPrice > sellThreshold && !hasSentSellAlert)
-                    {
-                        await emailService.SendAlertAsync("SELL", stockSymbol, currentPrice, sellThreshold);
-                        hasSentSellAlert = true;
-                        hasSentBuyAlert = false;
-                    }
-                    else if (currentPrice < buyThreshold && !hasSentBuyAlert)
-                    {
-                        await emailService.SendAlertAsync("BUY", stockSymbol, currentPrice, buyThreshold);
-                        hasSentBuyAlert = true;
-                        hasSentSellAlert = false;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Unexpected runtime error: {ex.Message}");
-            }
-
-            await Task.Delay(TimeSpan.FromMinutes(1));
-        }
+        IEmailService emailService = new EmailService(config);
+        IStockService stockService = new StockService();
+        var monitor = new StockAlertMonitor(stockSymbol, sellThreshold, buyThreshold, stockService, emailService);
+        await monitor.RunAsync();
     }
 }

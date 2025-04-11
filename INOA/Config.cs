@@ -1,6 +1,6 @@
 ﻿public class Config
 {
-    public string EmailDestinastion { get; set; }
+    public string EmailDestination { get; set; }
     public SmtpConfig Smtp { get; set; }
 }
 

@@ -1,7 +1,7 @@
 ﻿using System.Net;
 using System.Net.Mail;
 
-public class EmailService
+public class EmailService : IEmailService
 {
     private readonly Config _config;
 

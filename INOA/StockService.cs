@@ -1,7 +1,7 @@
 ﻿using System.Net.Http;
 using System.Text.Json;
 
-public class StockService
+public class StockService : IStockService
 {
     private static readonly HttpClient httpClient = new HttpClient();
 
