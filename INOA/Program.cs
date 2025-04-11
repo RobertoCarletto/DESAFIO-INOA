@@ -16,6 +16,19 @@ class Program
         {
             switch (args[0])
             {
+                case "--show-log":
+                    string logPath = Path.Combine("logs", "alerts.log");
+                    if (!File.Exists(logPath))
+                    {
+                        Console.WriteLine("No logs available.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("--- Log Content ---");
+                        Console.WriteLine(File.ReadAllText(logPath));
+                        Console.WriteLine("--------------------");
+                    }
+                    return;
                 case "--help":
                     Console.WriteLine("Available commands:");
                     Console.WriteLine("  --edit-email     Edit alert destination email");
