@@ -13,10 +13,22 @@ class Program
         string configPath = "config.json";
         string assetsPath = "assets.args";
 
+        IStockService stockService = new StockService();
+
+        if (args.Length == 0)
+        {
+            Console.WriteLine("Welcome to Stock Quote Alert!");
+            ShowHelp();
+        }
+
         if (args.Length == 1)
         {
             switch (args[0])
             {
+                case "--list-assets":
+                    await stockService.ListAvailableAssetsAsync();
+                    return;
+                
                 case "--show-log":
                     string logPath = Path.Combine("logs", "alerts.log");
                     if (!File.Exists(logPath))
@@ -29,12 +41,6 @@ class Program
                         Console.WriteLine(File.ReadAllText(logPath));
                         Console.WriteLine("--------------------");
                     }
-                    return;
-                case "--help":
-                    Console.WriteLine("Available commands:");
-                    Console.WriteLine("  --edit-email     Edit alert destination email");
-                    Console.WriteLine("  --edit-assets    Edit monitored stocks and thresholds");
-                    Console.WriteLine("  --reset-config   Delete config.json and assets.args to reconfigure everything");
                     return;
 
                 case "--edit-email":
@@ -87,8 +93,26 @@ class Program
                     return;
 
                 case "--reset-config":
-                    if (File.Exists(configPath)) File.Delete(configPath);
-                    if (File.Exists(assetsPath)) File.Delete(assetsPath);
+                    if (!File.Exists(configPath))
+                    {
+                        Console.WriteLine("Configuration file not found.");
+                        return;
+                    }
+
+                    var originalJson = await File.ReadAllTextAsync(configPath);
+                    var originalConfig = JsonSerializer.Deserialize<Config>(originalJson);
+
+                    if (originalConfig == null || originalConfig.Smtp == null)
+                    {
+                        Console.WriteLine("Invalid configuration file.");
+                        return;
+                    }
+
+                    originalConfig.EmailDestination = "";
+                    string updatedJson = JsonSerializer.Serialize(originalConfig, new JsonSerializerOptions { WriteIndented = true });
+                    File.WriteAllText(configPath, updatedJson);
+                    File.WriteAllText(assetsPath, "");
+
                     Log("Configuration reset via --reset-config");
                     Console.WriteLine("Configuration reset. Restart the program to reconfigure.");
                     return;
@@ -148,7 +172,6 @@ class Program
         }
 
         IEmailService emailService = new EmailService(config);
-        IStockService stockService = new StockService();
 
         string[] assetArgs;
 
@@ -202,6 +225,7 @@ class Program
             Log($"Monitoring {stockSymbol}: SELL > {sellThreshold}, BUY < {buyThreshold}");
         }
 
+
         if (monitors.Count == 0)
         {
             Console.WriteLine("No valid stocks to monitor. Exiting.");
@@ -216,6 +240,18 @@ class Program
     static bool IsValidEmail(string email)
     {
         return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+    }
+
+    static void ShowHelp()
+    {
+        Console.WriteLine("Available commands:");
+        Console.WriteLine("  --edit-email     Edit alert destination email");
+        Console.WriteLine("  --edit-assets    Edit monitored stocks and thresholds");
+        Console.WriteLine("  --reset-config   Clear email and asset configuration");
+        Console.WriteLine("  --show-log       View log entries");
+        Console.WriteLine("  --list-assets    List available B3 stock symbols from brapi.dev");
+        Console.WriteLine("  [symbol sell buy ...]   Run alerts manually");
+        Console.WriteLine();
     }
 
     static void Log(string message)
