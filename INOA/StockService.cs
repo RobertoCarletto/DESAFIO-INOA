@@ -9,8 +9,20 @@ public class StockService : IStockService
     {
         try
         {
-            string apiUrl = $"https://brapi.dev/api/quote/{stockSymbol}?range=1d&interval=1m";
-            var jsonResponse = await httpClient.GetStringAsync(apiUrl);
+            string token = "iEdno1GoVXexf3S5WdHK9S";
+            string apiUrl = $"https://brapi.dev/api/quote/{stockSymbol}?token={token}&range=1d&interval=1d";
+
+            var response = await httpClient.GetAsync(apiUrl);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[ERROR] HTTP {(int)response.StatusCode}: {response.ReasonPhrase}");
+                Console.WriteLine($"[ERROR] Resposta da API: {errorContent}");
+                return -1;
+            }
+
+            var jsonResponse = await response.Content.ReadAsStringAsync();
             using var jsonDoc = JsonDocument.Parse(jsonResponse);
 
             var stockData = jsonDoc.RootElement.GetProperty("results")[0];

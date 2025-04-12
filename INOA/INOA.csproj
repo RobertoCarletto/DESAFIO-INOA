@@ -7,8 +7,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <None Include="StockQuoteAlert.csproj" />
-  </ItemGroup>
-
 </Project>

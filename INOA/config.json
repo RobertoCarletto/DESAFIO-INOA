@@ -2,9 +2,9 @@
     "EmailDestination": "",
     "CheckIntervalSeconds": 60,
     "Smtp": {
-        "Host": "",
+        "Host": "smtp.gmail.com",
         "Port": 587,
-        "Username": "",
-        "Password": ""
+        "Username": "robertocarletto@poli.ufrj.br",
+        "Password": "iEdno1GoVXexf3S5WdHK9S"
     }
 }

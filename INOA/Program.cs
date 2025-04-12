@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System;
 using System.IO;
+using System.Globalization;
 
 class Program
 {
@@ -185,8 +186,11 @@ class Program
         for (int i = 0; i < assetArgs.Length; i += 3)
         {
             string stockSymbol = assetArgs[i];
-            if (!double.TryParse(assetArgs[i + 1], out double sellThreshold) ||
-                !double.TryParse(assetArgs[i + 2], out double buyThreshold))
+
+            bool parsedSell = double.TryParse(assetArgs[i + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out double sellThreshold);
+            bool parsedBuy = double.TryParse(assetArgs[i + 2], NumberStyles.Float, CultureInfo.InvariantCulture, out double buyThreshold);
+
+            if (!parsedSell || !parsedBuy)
             {
                 Console.WriteLine($"Invalid thresholds for {stockSymbol}. Skipping...");
                 Log($"Invalid input for {stockSymbol}: {assetArgs[i + 1]} / {assetArgs[i + 2]}");
