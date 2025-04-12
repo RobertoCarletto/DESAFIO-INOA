@@ -9,7 +9,7 @@ public class StockService : IStockService
     {
         try
         {
-            string token = "iEdno1GoVXexf3S5WdHK9S";
+            string token = "r84yeDzd5zKg6rsKzFquwG";
             string apiUrl = $"https://brapi.dev/api/quote/{stockSymbol}?token={token}&range=1d&interval=1d";
 
             var response = await httpClient.GetAsync(apiUrl);

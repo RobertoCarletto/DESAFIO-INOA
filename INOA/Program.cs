@@ -109,12 +109,60 @@ class Program
                     }
 
                     originalConfig.EmailDestination = "";
+                    originalConfig.CheckIntervalSeconds = 0;
                     string updatedJson = JsonSerializer.Serialize(originalConfig, new JsonSerializerOptions { WriteIndented = true });
                     File.WriteAllText(configPath, updatedJson);
                     File.WriteAllText(assetsPath, "");
 
                     Log("Configuration reset via --reset-config");
                     Console.WriteLine("Configuration reset. Restart the program to reconfigure.");
+                    return;
+
+                case "--edit-interval":
+                    if (!File.Exists(configPath))
+                    {
+                        Console.WriteLine("Configuration file not found.");
+                        return;
+                    }
+
+                    var configJsonInterval = await File.ReadAllTextAsync(configPath);
+                    var configEditInterval = JsonSerializer.Deserialize<Config>(configJsonInterval);
+
+                    if (configEditInterval == null || configEditInterval.Smtp == null)
+                    {
+                        Console.WriteLine("Invalid configuration file.");
+                        return;
+                    }
+
+                    string newIntervalRaw;
+                    int newInterval;
+                    do
+                    {
+                        Console.Write("Enter new check interval in seconds (min 60): ");
+                        newIntervalRaw = Console.ReadLine()?.Trim() ?? "";
+                        if (!int.TryParse(newIntervalRaw, out newInterval) || newInterval < 60)
+                        {
+                            Console.Write("Invalid interval, please try again!\n");
+                        }
+                    } while (!int.TryParse(newIntervalRaw, out newInterval) || newInterval < 60);
+
+                    using (var doc = JsonDocument.Parse(configJsonInterval))
+                    using (var stream = File.Create(configPath))
+                    using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
+                    {
+                        writer.WriteStartObject();
+                        foreach (var property in doc.RootElement.EnumerateObject())
+                        {
+                            if (property.NameEquals("CheckIntervalSeconds"))
+                                writer.WriteNumber("CheckIntervalSeconds", newInterval);
+                            else
+                                property.WriteTo(writer);
+                        }
+                        writer.WriteEndObject();
+                    }
+
+                    Log($"Check interval updated to {newInterval} seconds");
+                    Console.WriteLine("Check interval updated successfully.");
                     return;
 
                 default:
@@ -169,6 +217,47 @@ class Program
             writer.WriteEndObject();
             await writer.FlushAsync();
             Log($"Email destination set to {emailInput}");
+        }
+
+        if (config.CheckIntervalSeconds < 60)
+        {
+            string intervalInput;
+            int interval;
+            do
+            {
+                Console.Write("Please enter the check interval in seconds (minimum 60): ");
+                intervalInput = Console.ReadLine()?.Trim() ?? "";
+                if (!int.TryParse(intervalInput, out interval) || interval < 60)
+                {
+                    Console.Write("Invalid interval, please try again!\n");
+                }
+            } while (!int.TryParse(intervalInput, out interval) || interval < 60);
+
+            config.CheckIntervalSeconds = interval;
+
+            using var jsonDoc = JsonDocument.Parse(rawConfig);
+            using var stream = File.Create(configPath);
+            using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
+
+            writer.WriteStartObject();
+            foreach (var property in jsonDoc.RootElement.EnumerateObject())
+            {
+                if (property.NameEquals("CheckIntervalSeconds"))
+                {
+                    writer.WriteNumber("CheckIntervalSeconds", interval);
+                }
+                else if (property.NameEquals("EmailDestination"))
+                {
+                    writer.WriteString("EmailDestination", config.EmailDestination);
+                }
+                else
+                {
+                    property.WriteTo(writer);
+                }
+            }
+            writer.WriteEndObject();
+            await writer.FlushAsync();
+            Log($"Check interval set to {interval} seconds");
         }
 
         IEmailService emailService = new EmailService(config);
@@ -247,7 +336,8 @@ class Program
         Console.WriteLine("Available commands:");
         Console.WriteLine("  --edit-email     Edit alert destination email");
         Console.WriteLine("  --edit-assets    Edit monitored stocks and thresholds");
-        Console.WriteLine("  --reset-config   Clear email and asset configuration");
+        Console.WriteLine("  --edit-interval  Edit the check interval between stock checks");
+        Console.WriteLine("  --reset-config   Clear email,asset and interval configuration");
         Console.WriteLine("  --show-log       View log entries");
         Console.WriteLine("  --list-assets    List available B3 stock symbols from brapi.dev");
         Console.WriteLine("  [symbol sell buy ...]   Run alerts manually");
